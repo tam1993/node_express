@@ -47,7 +47,7 @@ app.get('/user/get/:id', async (req, res) => {
     //async await
     try {
         uid = req.params.id
-        const results = await db.query('select * from users where id = ' + uid)
+        const results = await db.query('select * from users where id = ?', [uid])
         res.json(results[0])
     } catch (error) {
         res.status(500).json({ error: 'db query error' })
@@ -58,7 +58,7 @@ app.post('/user/add', async (req, res) => {
     try {
         let data = req.body
         const password = md5(saltPassword + req.password)
-        const results = await db.query('INSERT INTO `users` (`username`, `password`, `fullname`, `money_balance`, `last_deposit`, `last_withdraw`) VALUES (\'' + data.username + '\', \'' + password + '\', \'\', 0, NULL, NULL);')
+        const results = await db.query('INSERT INTO `users` (`username`, `password`, `fullname`, `money_balance`, `last_deposit`, `last_withdraw`) VALUES (?, ?, \'\', 0, NULL, NULL);', [data.username, password])
         res.json(results[0]);
     } catch (error) {
         console.log(error.message)
@@ -70,12 +70,12 @@ app.post('/user/update/:id', async (req, res) => {
     try {
         uid = req.params.id
         let data = req.body
-        const results = await db.query('select * from users where id = ' + uid)
+        const results = await db.query('select * from users where id = ?', [uid])
         if (!results[0].length) {
-            res.status(500).json({ error: 'user not found' })
+            res.status(400).json({ error: 'user not found' })
             return
         }
-        const update = await db.query('update users set fullname = \'' + data.fullname + '\' where id = ' + uid)
+        const update = await db.query('update users set fullname = ? where id = ?', [data.fullname, uid])
         res.json(update)
     } catch (error) {
         res.status(500).json({ error: 'db query error' })
