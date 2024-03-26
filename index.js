@@ -60,8 +60,14 @@ app.get('/test', logger, async (req, res) => {
 
 app.post('/user/login', async (req, res) => {
     try {
-        let data = req.body
+        const data = req.body
         const password = md5(saltPassword + data.password)
+        const regex = /^[a-z0-9]+$/;
+        if (!regex.test(data.username)) {
+            res.status(400).json({ error: 'username require a-z 0-9' })
+            return
+        }
+
         const results = await db.query('select * from users where `username` = ? and `password` = ?', [data.username, password])
         if (!results[0].length) {
             res.status(400).json({ error: 'user or password incorrect' })
@@ -77,6 +83,7 @@ app.post('/user/login', async (req, res) => {
         res.status(500).json({ error: 'db query error' })
     }
 })
+
 app.get('/user/selectuser', async (req, res) => {
     //async await
     try {
@@ -102,6 +109,11 @@ app.post('/user/add', async (req, res) => {
     try {
         let data = req.body
         const password = md5(saltPassword + data.password)
+        const regex = /^[a-z0-9]+$/;
+        if (!regex.test(data.username)) {
+            res.status(400).json({ error: 'username require a-z 0-9' })
+            return
+        }
         const results = await db.query('INSERT INTO `users` (`username`, `password`, `fullname`, `money_balance`, `last_deposit`, `last_withdraw`) VALUES (?, ?, \'\', 0, NULL, NULL);', [data.username, password])
         res.json(results[0]);
     } catch (error) {
@@ -136,6 +148,10 @@ app.post('/transaction/add', logger, async (req, res) => {
         }
         const user = usercheck[0][0]
         var money_balance = parseFloat(user["money_balance"])
+        if (typeof data.amount !== 'number') {
+            res.status(400).json({ error: 'wrong amount' })
+            return
+        }
         if (data.transaction == 'deposit') {
             money_balance += parseFloat(data.amount)
         } else if (data.transaction == 'withdraw') {
