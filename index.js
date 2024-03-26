@@ -2,8 +2,10 @@ const express = require('express');
 const bodyparser = require('body-parser');
 const mysql = require('mysql2/promise');
 const md5 = require('md5');
+const jwt = require('jsonwebtoken')
 
 const saltPassword = 'thisissalttt'
+const jwtSecret = '1234asdf'
 
 const now = new Date();
 const formattedDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
@@ -29,13 +31,52 @@ const initDB = async () => {
         port: DBPORT
     })
 }
-// //middleware
-// const logger = (req, res, next) => {
-//     console.log('ok')
-//     next()
-// }
-// app.use(logger)
+//middleware
+const logger = async (req, res, next) => {
+    try {
+        if (!req.headers["authorization"]) {
+            return res.status(401).json({ error: 'token require' })
+        }
+        const token = req.headers["authorization"].replace("Bearer ", "")
 
+        const tokenVerified = jwt.verify(token, jwtSecret)
+
+        req.userID = tokenVerified.user_id
+        next()
+    } catch (err) {
+        console.log(err)
+        res.status(401).json({ error: 'invalid token' })
+    }
+}
+
+app.get('/test', logger, async (req, res) => {
+    //async await
+    try {
+        res.json({ "auth": "sss" })
+    } catch (error) {
+        res.status(500).json({ error: 'db query error' })
+    }
+})
+
+app.post('/user/login', async (req, res) => {
+    try {
+        let data = req.body
+        const password = md5(saltPassword + data.password)
+        const results = await db.query('select * from users where `username` = ? and `password` = ?', [data.username, password])
+        if (!results[0].length) {
+            res.status(400).json({ error: 'user or password incorrect' })
+            return
+        }
+        //jwt
+        const jwtData = {
+            user_id: results[0][0]["id"]
+        }
+        const gentoken = jwt.sign(jwtData, jwtSecret, { expiresIn: "30m", algorithm: "HS256" })
+        res.json({ token: gentoken })
+    } catch (error) {
+        res.status(500).json({ error: 'db query error' })
+    }
+})
 app.get('/user/selectuser', async (req, res) => {
     //async await
     try {
@@ -60,7 +101,7 @@ app.get('/user/get/:id', async (req, res) => {
 app.post('/user/add', async (req, res) => {
     try {
         let data = req.body
-        const password = md5(saltPassword + req.password)
+        const password = md5(saltPassword + data.password)
         const results = await db.query('INSERT INTO `users` (`username`, `password`, `fullname`, `money_balance`, `last_deposit`, `last_withdraw`) VALUES (?, ?, \'\', 0, NULL, NULL);', [data.username, password])
         res.json(results[0]);
     } catch (error) {
@@ -85,10 +126,10 @@ app.post('/user/update/:id', async (req, res) => {
     }
 })
 
-app.post('/transaction/add', async (req, res) => {
+app.post('/transaction/add', logger, async (req, res) => {
     try {
         let data = req.body
-        const usercheck = await db.query('select * from users where id = ?', [data.user_id])
+        const usercheck = await db.query('select * from users where id = ?', [req.userID])
         if (!usercheck[0].length) {
             res.status(400).json({ error: 'user not found' })
             return
