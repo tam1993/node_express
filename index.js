@@ -2,9 +2,6 @@ const express = require('express')
 const bodyparser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
-const dotenv = require('dotenv')
-dotenv.config()
-
 //router
 const user = require('./route/user')
 const transaction = require('./route/transaction')
@@ -39,7 +36,6 @@ const logger = async (req, res, next) => {
 //         res.status(500).json({ error: 'db query error' })
 //     }
 // })
-
 
 app.use('/transaction', logger, transaction)
 app.use('/user', user)

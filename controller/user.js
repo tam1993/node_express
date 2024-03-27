@@ -1,24 +1,11 @@
-const mysql = require('mysql2/promise')
-const dotenv = require('dotenv')
-dotenv.config()
-
 const md5 = require('md5')
 const jwt = require('jsonwebtoken')
 
-let db = false
-const initDB = async () => {
-    db = await mysql.createConnection({
-        host: process.env.DBHOST,
-        user: process.env.DBUSERNAME,
-        password: process.env.DBPASSWORD,
-        database: process.env.DBNAME,
-        port: process.env.DBPORT
-    })
-}
-initDB()
+const { getDB } = require('../dbcon');
 
 exports.login = async (req, res) => {
     try {
+        const db = getDB();
         const data = req.body
         const password = md5(process.env.saltPassword + data.password)
         const regex = /^[a-z0-9]+$/;
@@ -46,6 +33,10 @@ exports.login = async (req, res) => {
 exports.selectuser = async (req, res) => {
     //async await
     try {
+        const db = getDB();
+        if (!db) {
+            return res.status(500).json({ error: 'Database not initialized' });
+        }
         const results = await db.query('select * from users')
         res.json(results[0])
     } catch (error) {
@@ -56,6 +47,7 @@ exports.selectuser = async (req, res) => {
 exports.get = async (req, res) => {
     //async await
     try {
+        const db = getDB();
         uid = req.params.id
         const results = await db.query('select * from users where id = ?', [uid])
         res.json(results[0])
@@ -66,6 +58,7 @@ exports.get = async (req, res) => {
 
 exports.add = async (req, res) => {
     try {
+        const db = getDB();
         let data = req.body
         const password = md5(process.env.saltPassword + data.password)
         const regex = /^[a-z0-9]+$/;
@@ -83,6 +76,7 @@ exports.add = async (req, res) => {
 
 exports.update = async (req, res) => {
     try {
+        const db = getDB();
         uid = req.params.id
         let data = req.body
         const results = await db.query('select * from users where id = ?', [uid])
