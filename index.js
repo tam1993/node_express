@@ -4,19 +4,13 @@ const mysql = require('mysql2/promise');
 const md5 = require('md5');
 const jwt = require('jsonwebtoken')
 
-const saltPassword = 'thisissalttt'
-const jwtSecret = '1234asdf'
+const dotenv = require('dotenv')
+dotenv.config()
 
 const now = new Date();
 const formattedDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
 
-const DBNAME = 'node'
-const DBUSERNAME = 'root'
-const DBPASSWORD = '1234'
-const DBHOST = 'localhost'
-const DBPORT = 3306
-
-const PORT = process.env.PORT || 8889;
+const PORT = 8889;
 const app = express();
 app.use(bodyparser.json())
 
@@ -24,11 +18,11 @@ let db = false
 const initDB = async () => {
     console.log('conecting db')
     db = await mysql.createConnection({
-        host: DBHOST,
-        user: DBUSERNAME,
-        password: DBPASSWORD,
-        database: DBNAME,
-        port: DBPORT
+        host: process.env.DBHOST,
+        user: process.env.DBUSERNAME,
+        password: process.env.DBPASSWORD,
+        database: process.env.DBNAME,
+        port: process.env.DBPORT
     })
 }
 //middleware
@@ -39,7 +33,7 @@ const logger = async (req, res, next) => {
         }
         const token = req.headers["authorization"].replace("Bearer ", "")
 
-        const tokenVerified = jwt.verify(token, jwtSecret)
+        const tokenVerified = jwt.verify(token, process.env.jwtSecret)
 
         req.userID = tokenVerified.user_id
         next()
@@ -61,7 +55,7 @@ app.get('/test', logger, async (req, res) => {
 app.post('/user/login', async (req, res) => {
     try {
         const data = req.body
-        const password = md5(saltPassword + data.password)
+        const password = md5(process.env.saltPassword + data.password)
         const regex = /^[a-z0-9]+$/;
         if (!regex.test(data.username)) {
             res.status(400).json({ error: 'username require a-z 0-9' })
@@ -77,7 +71,7 @@ app.post('/user/login', async (req, res) => {
         const jwtData = {
             user_id: results[0][0]["id"]
         }
-        const gentoken = jwt.sign(jwtData, jwtSecret, { expiresIn: "30m", algorithm: "HS256" })
+        const gentoken = jwt.sign(jwtData, process.env.jwtSecret, { expiresIn: "30m", algorithm: "HS256" })
         res.json({ token: gentoken })
     } catch (error) {
         res.status(500).json({ error: 'db query error' })
@@ -108,7 +102,7 @@ app.get('/user/get/:id', async (req, res) => {
 app.post('/user/add', async (req, res) => {
     try {
         let data = req.body
-        const password = md5(saltPassword + data.password)
+        const password = md5(process.env.saltPassword + data.password)
         const regex = /^[a-z0-9]+$/;
         if (!regex.test(data.username)) {
             res.status(400).json({ error: 'username require a-z 0-9' })
